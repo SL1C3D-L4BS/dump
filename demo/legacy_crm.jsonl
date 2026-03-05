@@ -1,0 +1,7 @@
+{"Customer_ID": "CUST-8812", "contactInfo": {"email": "ceo@acme.com", "phone": "+1-555-0192"}, "Revenue_YTD": "145000.50", "isActive": "true", "tags": ["enterprise", "q3-target"]}
+{"customer_id": "CUST-4401", "ContactInfo": {"Email": "jane@startup.io", "Phone": null}, "revenue_ytd": "89200", "IsActive": false, "tags": ["smb", "trial"]}
+{"Customer_ID": "CUST-9921", "contactInfo": {"email": "bob@corp.net", "phone": "+44-20-7946-0958"}, "Revenue_YTD": "2100000.00", "isActive": "true", "tags": ["enterprise", "europe"]}
+{"customer_id": "CUST-1107", "contactInfo": {"email": "alice@agency.co", "phone": ""}, "Revenue_YTD": "0", "isActive": "false", "tags": []}
+{"Customer_ID": "CUST-5533", "contactInfo": {"email": "ops@factory.com", "phone": "+81-3-1234-5678"}, "Revenue_YTD": "567000.25", "isActive": true, "tags": ["manufacturing", "q3-target", "apj"]}
+{"customer_id": "CUST-7700", "ContactInfo": {"Email": "support@saas.io"}, "revenue_ytd": "33400.99", "IsActive": "true", "tags": ["smb"]}
+{"Customer_ID": "CUST-2002", "contactInfo": {"email": "director@gov.org", "phone": "+1-555-0100"}, "Revenue_YTD": "1200000", "isActive": "true", "tags": ["public-sector", "compliance"]}

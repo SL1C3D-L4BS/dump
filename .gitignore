@@ -1,0 +1,9 @@
+# Binary
+/dump
+*.exe
+
+# Local test/output artifacts
+out.jsonl
+out.parquet
+
+# (Demo crm_schema.yaml and clean_crm.parquet are committed so demo works without Ollama.)
