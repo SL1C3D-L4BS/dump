@@ -7,6 +7,16 @@ use std::ffi::{CStr, CString};
 use std::fs;
 use std::os::raw::c_char;
 use std::path::Path;
+use std::sync::Mutex;
+
+static LAST_SIGN_ERROR: std::sync::OnceLock<Mutex<String>> = std::sync::OnceLock::new();
+
+fn set_last_sign_error(s: String) {
+    let cell = LAST_SIGN_ERROR.get_or_init(|| Mutex::new(String::new()));
+    if let Ok(mut guard) = cell.lock() {
+        *guard = s;
+    }
+}
 
 mod hex {
     const HEX: &[u8] = b"0123456789abcdef";
@@ -97,11 +107,13 @@ fn load_or_create_keys(keys_path: &str) -> Result<(dilithium2::PublicKey, dilith
     let path = Path::new(keys_path);
     if path.exists() {
         let data = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        let keys: KeysJson = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-        let pk_bytes = hex::decode(&keys.public_key_hex)?;
-        let sk_bytes = hex::decode(&keys.secret_key_hex)?;
-        let pk = dilithium2::PublicKey::from_bytes(&pk_bytes).map_err(|_| "invalid public key")?;
-        let sk = dilithium2::SecretKey::from_bytes(&sk_bytes).map_err(|_| "invalid secret key")?;
+        let keys: KeysJson = serde_json::from_str(&data).map_err(|e| format!("keys json parse: {}", e))?;
+        let pk_bytes = hex::decode(&keys.public_key_hex).map_err(|e| format!("public_key_hex decode: {}", e))?;
+        let sk_bytes = hex::decode(&keys.secret_key_hex).map_err(|e| format!("secret_key_hex decode: {}", e))?;
+        let pk = dilithium2::PublicKey::from_bytes(&pk_bytes)
+            .map_err(|_| format!("invalid public key (len={})", pk_bytes.len()))?;
+        let sk = dilithium2::SecretKey::from_bytes(&sk_bytes)
+            .map_err(|_| format!("invalid secret key (len={})", sk_bytes.len()))?;
         return Ok((pk, sk));
     }
     let (pk, sk) = dilithium2::keypair();
@@ -198,7 +210,11 @@ pub unsafe extern "C" fn rust_sign_file_with_keys(path: *const c_char, keys_path
     };
     let seal = match sign_result_impl(path_str, kp) {
         Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+        Err(e) => {
+            eprintln!("vericore rust sign error: {}", e);
+            set_last_sign_error(e.clone());
+            return std::ptr::null_mut();
+        }
     };
     match CString::new(seal) {
         Ok(cs) => cs.into_raw(),
@@ -211,6 +227,23 @@ pub unsafe extern "C" fn rust_sign_free(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);
     }
+}
+
+/// Returns the last sign error message (call after rust_sign_file_with_keys returns null).
+/// Caller must call rust_sign_free on the returned pointer.
+#[no_mangle]
+pub unsafe extern "C" fn rust_sign_last_error() -> *mut c_char {
+    let cell = match LAST_SIGN_ERROR.get() {
+        Some(c) => c,
+        None => return std::ptr::null_mut(),
+    };
+    let guard = match cell.lock() {
+        Ok(g) => g,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let s = guard.clone();
+    drop(guard);
+    CString::new(s).ok().map_or(std::ptr::null_mut(), |cs| cs.into_raw())
 }
 
 /// Verify file at path against seal; keys_path must point to keys.json with public key.

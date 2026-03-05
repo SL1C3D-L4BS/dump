@@ -19,9 +19,10 @@ const (
 )
 
 // KeysJSON is the on-disk format for the Vericore PQC keypair (hex-encoded).
+// Field names match Rust KeysJson (public_key_hex, secret_key_hex) for compatibility.
 type KeysJSON struct {
-	PublicKey  string `json:"public_key"`
-	PrivateKey string `json:"private_key"`
+	PublicKeyHex string `json:"public_key_hex"`
+	SecretKeyHex string `json:"secret_key_hex"`
 }
 
 // VericoreKeysDir returns ~/.vericore/keys (creates if needed).
@@ -85,10 +86,10 @@ func Rotate() error {
 		return fmt.Errorf("generate PQC keys: %w", err)
 	}
 
-	// Encode as hex for storage
+	// Encode as hex for storage (Rust-compatible field names)
 	keys := KeysJSON{
-		PublicKey:  hex.EncodeToString(pub),
-		PrivateKey: hex.EncodeToString(priv),
+		PublicKeyHex: hex.EncodeToString(pub),
+		SecretKeyHex: hex.EncodeToString(priv),
 	}
 	raw, err := json.MarshalIndent(keys, "", "  ")
 	if err != nil {

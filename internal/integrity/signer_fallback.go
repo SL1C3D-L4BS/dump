@@ -1,5 +1,5 @@
-//go:build !cgo
-// +build !cgo
+//go:build cgo
+// +build cgo
 
 package integrity
 
@@ -7,16 +7,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/vericore/go-pq-mmr"
 )
 
-// SignResult hashes the file, appends the hash to an MMR, signs it with ML-DSA (PQC),
-// and returns the Vericore Seal. Go implementation (used when building without cgo).
-// Ensures keys exist at DefaultKeysPath() before signing (auto-provisioning).
-func SignResult(filePath string) (string, error) {
+// SignFileGo signs the file at path using the pure-Go MMR+PQC path and persisted keys.
+// Used as fallback when SignFileRust fails so the audit log is always written.
+func SignFileGo(filePath string) (string, error) {
 	if err := EnsureKeys(); err != nil {
 		return "", fmt.Errorf("ensure keys: %w", err)
 	}
@@ -24,15 +22,15 @@ func SignResult(filePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("load keys: %w", err)
 	}
-
-	data, err := readFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("read file: %w", err)
 	}
-	h := hashFileBytes(data)
+	h := sha256.Sum256(data)
+	hashSlice := h[:]
 
 	tree := mmr.NewTree()
-	position, err := tree.AppendSigned(h, privKey)
+	position, err := tree.AppendSigned(hashSlice, privKey)
 	if err != nil {
 		return "", fmt.Errorf("append signed: %w", err)
 	}
@@ -44,24 +42,9 @@ func SignResult(filePath string) (string, error) {
 	if len(root) == 0 {
 		return "", fmt.Errorf("empty MMR root")
 	}
-
 	seal := fmt.Sprintf("Vericore Seal\n  MMR Root:  %s\n  PQC Sig:   %s\n  File Hash: %s",
 		hex.EncodeToString(root),
 		hex.EncodeToString(proof.PQCSignature),
-		hex.EncodeToString(h))
+		hex.EncodeToString(hashSlice))
 	return seal, nil
-}
-
-func readFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return io.ReadAll(f)
-}
-
-func hashFileBytes(data []byte) []byte {
-	h := sha256.Sum256(data)
-	return h[:]
 }

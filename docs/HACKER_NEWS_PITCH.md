@@ -1,41 +1,42 @@
-# Show HN: We built a tool that treats 30-year-old X12 billing files like modern JSON streams (local-first AI + PQC signatures)
+# Show HN: DUMP – We treat 30-year-old X12 billing files like modern JSON streams (local AI + PQC)
 
-**TL;DR:** DUMP is a CLI + desktop app that streams EDI/X12/HL7 through the same engine as JSON and Parquet. Schema inference runs on **local Ollama**; every mapped output gets a **post-quantum (Dilithium2)** signature and Merkle Mountain Range so you can prove nothing was altered. We’re calling it the death of the legacy–modern gap.
+**TL;DR:** We built a tool that treats 30-year-old X12 billing files like modern JSON streams using **local-first AI** and **PQC signatures**. It solves the dev–prod parity nightmare with statistical mirroring and one audit trail. No cloud. No telemetry.
 
 ---
 
 ## The problem
 
-You have **X12 837** from 1995, **HL7 v2** from the lab, and a stack that expects **JSON** or **Parquet**. Today that usually means brittle ETL, hand-written parsers, or “just put it in the data lake and fix it later.” Nobody wants to treat 30-year-old billing files as first-class citizens next to modern streams.
+Healthcare and insurance still run on EDI/X12/HL7. Files are huge, schemas are tribal, and “test in prod” is a joke because you can’t mirror 1.2 GB of claims without blowing the heap or shipping PII. Dev and prod drift. Auditors want proof that the migrated Parquet is bit-identical to the source. Nobody wants to send that data to a SaaS.
 
 ## What we built
 
-**DUMP** (Data Universal Mapping Platform) does three things without leaving your machine:
+**DUMP** (Data Universal Mapping Platform):
 
-1. **One streaming engine** — X12, HL7, XML, CSV, JSONL, and SQL feed the same pipeline. We built a stateful X12 reader that yields one JSON “row” per claim (CLM) so you can map it with the same YAML schema you use for JSON. No batch load; no “load entire file into memory.” We stress-tested it on a **1.2GB synthetic X12 file**: heap stays flat (~4 MB peak), ~5.8k claims/sec.
+- **Discover:** `dump scan --path .` — finds untracked CSV, XLSX, JSONL, EDI, X12; profiles row count, PII density, schema complexity; suggests migration commands.
+- **Understand:** `dump generate csharp legacy.x12` — TypeGen: strictly-typed C# POCOs from HL7/X12 so dev and prod speak the same types. No more “works in staging, breaks in prod” type mismatches.
+- **Stream:** `dump map legacy.x12 --schema inferred.yaml --format parquet --output secure.parquet` — X12 → Parquet at wire speed. **O(1) memory:** we validated 1.2 GB input with **&lt; 5 MB heap**. No load-all-in-memory.
+- **Seal:** Every mapped file gets a **Vericore** seal: Merkle Mountain Range + **Dilithium2 (post-quantum)** signature. `dump audit verify --all` re-computes hashes and verifies every signature in the audit log.
+- **Mask:** `--mask=pii` in the map step; PII is anonymized in the stream before it hits Parquet or S3.
 
-2. **Local-first AI** — Schema inference and “mystery file” analysis use **Ollama** on your box. No cloud APIs, no telemetry. You point `dump analyze` at a random .x12 or .edi file; it detects the format, uses embedded healthcare dialects (x12_837, x12_835, hl7_v25), and optionally uses an LLM to infer custom (e.g. Z-) segments. Then you map with one command.
+Schema inference runs on **local Ollama**. No cloud APIs. No telemetry. Data never leaves your box.
 
-3. **Post-quantum integrity** — Every `dump map` or `dump mirror` that writes a file can append to a **Vericore** seal: file hash, MMR root, and a **Dilithium2** signature. You get a persistent audit log (`~/.vericore/audit.db`) and `dump audit verify --all` to re-hash files and verify signatures so you can prove the beast is unchanged.
+We ship an **embedded Healthcare Dialect Pack** (X12 837/835, HL7 v2.5). Custom or undocumented segments (Z-segments) are detected and inferred by the LLM; we write `custom_dialect.yaml` and merge it with the standard dialect so mapping stays consistent.
 
-We added a **bi-directional proxy** too: JSON in → up-converted to X12 → sent to the legacy backend; X12 response → down-converted to FHIR/JSON for the modern app. All behind a single `dump proxy --virtualize` process.
+## Dev–prod parity and statistical mirroring
 
----
+The nightmare: “It works on the 10 MB sample; prod is 1.2 GB and the process OOMs.” We generate a **1.2 GB synthetic X12 837** with `dump stress -o legacy.x12 -s 1200` and run the full pipeline. Same binary, same schema, same seal. That’s the statistical mirror: if it seals and verifies on the beast, it will on prod.
 
-## Why it matters
-
-The “legacy–modern gap” is really a **streaming and integrity** gap. Once you can stream X12 like JSON and seal outputs with PQC, “legacy” is just another input type. We wanted a single tool where the same binary does `dump stress` (generate a 1.2GB X12 file), `dump scan` (find it), `dump map` (tame it with PII masking), and `dump audit verify` (prove it’s unchanged). That’s the demo we ship in `docs/DEMO_COMMANDS.sh`.
-
----
+TypeGen (`dump generate csharp`) means the app that reads the mapped data uses the same types as the pipeline that wrote them. One source of truth. No “we changed the segment and forgot to regenerate the DTOs.”
 
 ## Tech stack
 
-- **Go** CLI (Cobra); optional **Rust** core via cgo for mapping and Dilithium2.
-- **Ollama** for inference; **Vericore** (MMR + Dilithium2) for sealing and audit.
-- **Tauri v2** desktop app for mapping graph, verification dropzone, and live preview.
-- Healthcare: embedded X12 837/835 and HL7 v2.5 dialects; FHIR Bundle streaming in/out.
+- **CLI:** Go (Cobra); optional cgo link to **Rust** for the mapping hot path and Vericore (Dilithium2 + MMR).
+- **Formats:** JSONL, CSV, XML, EDI, X12, FHIR (streaming), Parquet, SQL (Postgres/SQLite), XLSX, Protobuf (heuristic), bit-level binary for IoT.
+- **Sinks:** Local files, S3, Prometheus Pushgateway, Elasticsearch.
+- **Desktop:** Tauri v2 + React (mapping graph, verification dropzone, Ollama panel).
+- **Browser:** Chrome extension (WASM) for Protobuf/gRPC-Web decode in DevTools.
 
 Repo: [github.com/SL1C3D-L4BS/dump](https://github.com/SL1C3D-L4BS/dump)  
-Docs: `docs/README.md` (Launch Manifest), `PERFORMANCE.md` (1.2GB stress test), `docs/DEMO_COMMANDS.sh` (copy-paste terminal demo).
+Binaries: [Releases](https://github.com/SL1C3D-L4BS/dump/releases)
 
-We’re happy to answer questions and hear how you’re bridging legacy and modern data.
+We’re happy to answer questions and hear how you’re handling legacy EDI/X12 and integrity auditing today.

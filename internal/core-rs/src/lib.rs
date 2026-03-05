@@ -7,7 +7,7 @@ mod mapper;
 
 pub use arrow_ipc::{map_rows_to_arrow_buffer, map_rows_to_arrow_buffer_with_schema_json};
 pub use crypto::{
-    rust_sign_file, rust_sign_file_with_keys, rust_sign_free,
+    rust_sign_file, rust_sign_file_with_keys, rust_sign_free, rust_sign_last_error,
     rust_verify_file, rust_verify_free, verify_file_impl as verify_file_rs,
     rotate_keys_rs,
 };
