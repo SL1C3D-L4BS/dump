@@ -58,7 +58,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 1. **Infer:** `dump infer source.json --target=parquet > schema.yaml`  
    Use `--from=xml` or `--from=edi` for non-JSON sources.
 2. **Map:** `dump map source.json --schema=schema.yaml --format=parquet --output=output.parquet`  
-   Use `--input-type xml` or `--input-type edi` (with `--dialect` for EDI). Add `--mask=pii` to anonymize PII in the stream.
+   Use `--input-type xml`, `--input-type edi`, `--input-type x12`, or `--input-type fhir` (with `--dialect` for EDI/X12). Use `--format fhir` to write a FHIR Bundle. Add `--mask=pii` to anonymize PII in the stream.
 3. **Analyze (zero-knowledge):** `dump analyze mystery.txt --target=parquet`  
    Detects format (jsonl, csv, xml, edi), samples the file, and infers a mapping via Ollama.
 4. **Fan-out:** `dump fanout --config fanout.yaml`  
@@ -69,6 +69,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 7. **Diff (heterogeneous):** `dump diff --s1 a.xlsx --s2 b.jsonl --on id` — Compare two sources (Excel, JSON, CSV, SQL) on a primary key.
 8. **NL2S (prompt-to-schema):** `echo "text" | dump nl2s --template schema.json` — Extract structured JSON from unstructured text via Ollama.
 9. **IoT ingest:** `dump ingest mqtt --broker tcp://localhost:1883 --topic telemetry/# --schema bits.yaml --pushgateway http://localhost:9091` — Decode binary MQTT payloads with a bit-level schema and push to Prometheus.
+10. **FHIR:** `dump map bundle.json --input-type fhir --schema schema.yaml --format fhir --output out.json` — Stream FHIR Bundles or single resources in; write mapped rows as a FHIR Bundle out.
 
 ---
 
@@ -77,7 +78,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 | Command   | Description |
 |----------|-------------|
 | `dump infer [file]`   | Infer a YAML mapping from sample data (Ollama). `--target`, `--from=json\|xml\|edi`, `--model` |
-| `dump map [file]`     | Map input to JSONL or Parquet using a schema. `--schema`, `--input-type`, `--format`, `--mask=pii`, `--dialect` (EDI), `--xml-block` |
+| `dump map [file]`     | Map input to JSONL, Parquet, or FHIR Bundle. `--schema`, `--input-type` (jsonl/csv/xml/edi/x12/fhir), `--format` (jsonl/parquet/fhir), `--mask=pii`, `--dialect` (EDI/X12), `--xml-block` |
 | `dump analyze [file]` | Detect format and infer mapping from a mystery file. `--target`, `--model`, `--dialect` (optional for EDI) |
 | `dump fanout`        | Multi-target fan-out from a YAML config. `--config`, `--mask=pii` |
 | `dump proxy`         | HTTP sidecar: forward requests to upstream and stream mapped JSONL. `--upstream`, `--schema`, `--port`, `--xml-block` |
@@ -95,7 +96,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 * **CLI:** Go (Cobra), optional cgo link to Rust for mapping and verification.
 * **Rust core:** Schema application, row mapping, Arrow IPC, Dilithium2 signing/verification.
 * **Inference:** Ollama-only for schema and mapping suggestions.
-* **Formats:** JSONL, CSV, XML (streaming), EDI/HL7 (with dialect YAML), SQL (Postgres, SQLite), Excel (XLSX), binary (bit-level for IoT).
-* **Sinks:** Local JSONL/Parquet, S3, Prometheus Pushgateway, Elasticsearch; PII masking via `--mask=pii`.
+* **Formats:** JSONL, CSV, XML (streaming), EDI/HL7 (with dialect YAML), SQL (Postgres, SQLite), Excel (XLSX), X12 (stateful loops), binary (bit-level for IoT), FHIR (streaming Bundle/single resource).
+* **Sinks:** Local JSONL/Parquet/FHIR Bundle, S3, Prometheus Pushgateway, Elasticsearch; PII masking via `--mask=pii`.
 * **Desktop:** Tauri v2, React, Tailwind; calls into Rust core for mapping and verification.
 * **Browser:** Chrome DevTools extension (WASM) for heuristic Protobuf/gRPC-Web decoding in the Network panel.
