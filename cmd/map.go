@@ -42,8 +42,8 @@ func init() {
 	mapCmd.Flags().StringVar(&mapOutput, "output", "", "Output file path (required for parquet; default stdout for jsonl)")
 	mapCmd.Flags().StringVar(&mapDBURL, "db-url", "", "Database URL (postgres://... or file:path.db) to query instead of file input")
 	mapCmd.Flags().StringVar(&mapQuery, "query", "SELECT * FROM users", "SQL query to run when --db-url is set")
-	mapCmd.Flags().StringVar(&mapInputType, "input-type", "", "Override input type: jsonl, csv, xml, or edi (default: auto from file extension)")
-	mapCmd.Flags().StringVar(&mapDialect, "dialect", "", "Path to dialect YAML (required when input-type is edi)")
+	mapCmd.Flags().StringVar(&mapInputType, "input-type", "", "Override input type: jsonl, csv, xml, edi, x12, or fhir (default: auto from file extension)")
+	mapCmd.Flags().StringVar(&mapDialect, "dialect", "", "Path to dialect YAML (required when input-type is edi or x12)")
 	mapCmd.Flags().StringVar(&mapXMLBlock, "xml-block", "Record", "Repeating XML element name for xml input-type")
 	mapCmd.Flags().StringVar(&mapMask, "mask", "", "Enable semantic masking (e.g. pii to anonymize PII in the output stream)")
 	_ = mapCmd.MarkFlagRequired("schema")
@@ -52,6 +52,9 @@ func init() {
 func runMap(cmd *cobra.Command, args []string) error {
 	if mapFormat == "parquet" && mapOutput == "" {
 		return fmt.Errorf("--output is required when --format=parquet")
+	}
+	if mapFormat == "fhir" || mapInputType == "fhir" {
+		fmt.Fprintf(os.Stderr, "%s⚕️ SL1C3D-L4BS FHIR Adapter Active: Bridging HL7/JSON to FHIR Bundles.%s\n", violetANSI, resetANSI)
 	}
 
 	var in io.ReadCloser
@@ -81,8 +84,20 @@ func runMap(cmd *cobra.Command, args []string) error {
 				typ = "xml"
 			case strings.HasSuffix(strings.ToLower(inputPath), ".edi"), strings.HasSuffix(strings.ToLower(inputPath), ".hl7"):
 				typ = "edi"
+			case strings.HasSuffix(strings.ToLower(inputPath), ".x12"):
+				typ = "x12"
+			case strings.HasSuffix(strings.ToLower(inputPath), ".json"):
+				// Could be FHIR Bundle or plain JSON; default jsonl unless user says fhir
+				if mapInputType == "fhir" {
+					typ = "fhir"
+				} else {
+					typ = "jsonl"
+				}
 			default:
 				typ = "jsonl"
+			}
+			if mapInputType == "fhir" {
+				typ = "fhir"
 			}
 		}
 		switch typ {
@@ -99,6 +114,18 @@ func runMap(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("load dialect: %w", err)
 			}
 			in = io.NopCloser(engine.NewEDIReader(f, dialect))
+		case "x12":
+			if mapDialect == "" {
+				return fmt.Errorf("--dialect is required when --input-type is x12")
+			}
+			dialect, err := dialects.LoadDialect(mapDialect)
+			if err != nil {
+				return fmt.Errorf("load dialect: %w", err)
+			}
+			fmt.Fprintf(os.Stderr, "%s🏥 X12 Stateful Parsing Active: Tracking hierarchical loops for billing reconciliation.%s\n", violetANSI, resetANSI)
+			in = io.NopCloser(engine.NewX12Reader(f, dialect))
+		case "fhir":
+			in = io.NopCloser(engine.NewFHIRReader(f))
 		default:
 			in = f
 		}
@@ -126,6 +153,22 @@ func runMap(cmd *cobra.Command, args []string) error {
 		}
 		sink = pw
 		closer = pw
+	} else if mapFormat == "fhir" {
+		if mapOutput != "" {
+			outFile, err := os.Create(mapOutput)
+			if err != nil {
+				return fmt.Errorf("create output: %w", err)
+			}
+			defer outFile.Close()
+			outPath = mapOutput
+			fw := engine.NewFHIRWriter(outFile)
+			sink = fw
+			closer = fw
+		} else {
+			fw := engine.NewFHIRWriter(os.Stdout)
+			sink = fw
+			closer = fw
+		}
 	} else {
 		if mapOutput != "" {
 			outFile, err := os.Create(mapOutput)

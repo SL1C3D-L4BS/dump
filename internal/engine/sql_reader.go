@@ -118,3 +118,54 @@ func (r *SQLReader) Close() error {
 	}
 	return nil
 }
+
+// SQLRowReader implements RowReader by running a query and yielding one row per Next().
+// Use for diff and other row-by-row consumers.
+type SQLRowReader struct {
+	db   *sql.DB
+	rows *sql.Rows
+}
+
+// NewSQLRowReader opens dbURL, runs query, and returns a RowReader.
+func NewSQLRowReader(dbURL, query string) (*SQLRowReader, error) {
+	driver, dsn := parseDBURL(dbURL)
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+	rows, err := db.Query(query)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	return &SQLRowReader{db: db, rows: rows}, nil
+}
+
+// Next returns the next row as map[string]interface{}. Returns (nil, io.EOF) when done.
+func (r *SQLRowReader) Next() (map[string]interface{}, error) {
+	if r.rows == nil {
+		return nil, io.EOF
+	}
+	if !r.rows.Next() {
+		r.rows.Close()
+		r.rows = nil
+		return nil, io.EOF
+	}
+	return rowToMap(r.rows)
+}
+
+// Close releases the connection and result set.
+func (r *SQLRowReader) Close() error {
+	if r.rows != nil {
+		r.rows.Close()
+		r.rows = nil
+	}
+	if r.db != nil {
+		return r.db.Close()
+	}
+	return nil
+}

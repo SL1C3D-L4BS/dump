@@ -28,6 +28,45 @@ func NewSchemaInferencer(baseURL string, client *http.Client) *SchemaInferencer 
 	return &SchemaInferencer{BaseURL: baseURL, HTTPClient: client}
 }
 
+// Generate sends a single prompt to Ollama and returns the raw response (no markdown stripping).
+// Used by NL2S and other callers that need direct model output.
+func (s *SchemaInferencer) Generate(model string, prompt string) (string, error) {
+	if model == "" {
+		model = "llama3"
+	}
+	reqBody := map[string]interface{}{
+		"model":  model,
+		"prompt": prompt,
+		"stream": false,
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+	url := strings.TrimSuffix(s.BaseURL, "/") + "/api/generate"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("ollama request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		slurp, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("ollama api error %d: %s", resp.StatusCode, string(slurp))
+	}
+	var result struct {
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+	return strings.TrimSpace(result.Response), nil
+}
+
 // InferMapping sends the sample data to Ollama and returns the raw YAML mapping for the target format.
 // model is the Ollama model name (e.g. "llama3"). sourceFormat may be "json", "xml", or "edi"
 // to tailor the system prompt. The response is cleaned of markdown backticks if present.

@@ -1,0 +1,41 @@
+# X12 837 (healthcare claim) dialect: segment terminator ~, element separator *.
+# Loop triggers: NM1 element 0 (entity identifier) drives loop context.
+# Yields one row per CLM (claim) segment.
+name: X12_837
+message_start_segment: ST
+delimiters:
+  segment: "~"
+  field: "*"
+  component: "^"
+
+transaction_boundary:
+  start: ST
+  end: SE
+
+loop_triggers:
+  NM1:
+    - element_index: 0
+      value: "41"
+      enter_loop: "Loop_1000A"
+    - element_index: 0
+      value: "40"
+      enter_loop: "Loop_1000B"
+    - element_index: 0
+      value: "85"
+      enter_loop: "Loop_2010BB"
+    - element_index: 0
+      value: "IL"
+      enter_loop: "Loop_2010BA"
+    - element_index: 0
+      value: "QC"
+      enter_loop: "Loop_2010CA"
+
+yield_trigger:
+  segment: CLM
+
+segments:
+  ST: [TransactionSet, SetId, ControlNumber]
+  BHT: [HierarchicalStructureCode, TransactionSetPurposeCode, ReferenceId, Date, Time, TransactionTypeCode]
+  NM1: [EntityIdCode, NameLast, NameFirst, NameMiddle, NamePrefix, NameSuffix, IdCodeQualifier, IdCode]
+  CLM: [ClaimId, Amount, PlaceOfService, ClaimType, ServiceLines]
+  HL: [Id, ParentId, LevelCode, ChildCode]

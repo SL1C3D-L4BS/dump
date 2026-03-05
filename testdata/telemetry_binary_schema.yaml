@@ -1,0 +1,16 @@
+# Example bit-level mapping for IoT telemetry (source: binary).
+# Use with: dump ingest mqtt --broker tcp://localhost:1883 --topic telemetry/sensors/# --schema testdata/telemetry_binary_schema.yaml --pushgateway http://localhost:9091
+source: binary
+fields:
+  - name: sensor_id
+    bit_offset: 0
+    bit_length: 8
+    type: uint8
+  - name: temperature
+    bit_offset: 8
+    bit_length: 16
+    type: int16_be
+  - name: flags
+    bit_offset: 24
+    bit_length: 1
+    type: bool

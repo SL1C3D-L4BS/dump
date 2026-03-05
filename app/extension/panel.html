@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DUMP Proto Decoder</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .toolbar {
+      padding: 6px 8px;
+      background: #252526;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar input {
+      flex: 1;
+      padding: 4px 8px;
+      background: #3c3c3c;
+      border: 1px solid #555;
+      color: #ccc;
+      border-radius: 3px;
+    }
+    .toolbar input::placeholder { color: #888; }
+    .toolbar button {
+      padding: 4px 10px;
+      background: #0e639c;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .toolbar button:hover { background: #1177bb; }
+    .toolbar button.secondary { background: #3c3c3c; color: #ccc; }
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 8px;
+    }
+    .tree { margin: 0; padding-left: 0; list-style: none; }
+    .tree ul { padding-left: 16px; margin: 0; list-style: none; border-left: 1px solid #333; margin-left: 6px; }
+    .tree li { margin: 2px 0; }
+    .tree .key { color: #9cdcfe; }
+    .tree .string { color: #ce9178; }
+    .tree .number { color: #b5cea8; }
+    .tree .bool { color: #569cd6; }
+    .tree .null { color: #808080; }
+    .tree .toggle { cursor: pointer; user-select: none; }
+    .tree .toggle::before { content: '▶'; display: inline-block; width: 12px; color: #888; }
+    .tree .toggle.open::before { content: '▼'; }
+    .tree .hidden { display: none; }
+    .error { color: #f48771; padding: 8px; }
+    .status { color: #808080; font-size: 11px; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search keys/values..." />
+    <button type="button" id="decode-last">Decode last Proto</button>
+    <button type="button" id="load-demo" class="secondary">Load demo</button>
+  </div>
+  <div class="status" id="status">Load WASM and decode a gRPC/Protobuf response, or paste base64.</div>
+  <div class="content" id="content"></div>
+
+  <script src="lib/wasm_exec.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
