@@ -4,7 +4,8 @@
 package engine
 
 /*
-#cgo LDFLAGS: -L ${SRCDIR}/../core-rs/target/release -ldump_core -lm -lpthread
+#cgo windows LDFLAGS: -L ${SRCDIR}/../core-rs/target/release -ldump_core -lws2_32 -lntdll -luserenv -lkernel32
+#cgo !windows LDFLAGS: -L ${SRCDIR}/../core-rs/target/release -ldump_core -lm -lpthread
 #include <stdlib.h>
 #include <string.h>
 
