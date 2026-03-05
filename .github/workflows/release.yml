@@ -22,14 +22,17 @@ jobs:
             goos: linux
             goarch: amd64
             ext: ''
+            rust_target: x86_64-unknown-linux-gnu
           - runs-on: macos-latest
             goos: darwin
             goarch: arm64
             ext: ''
+            rust_target: aarch64-apple-darwin
           - runs-on: windows-latest
             goos: windows
             goarch: amd64
             ext: '.exe'
+            rust_target: x86_64-pc-windows-gnu
 
     runs-on: ${{ matrix.runs-on }}
 
@@ -39,10 +42,18 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
 
       - name: Build Rust core
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.rust_target }}
         working-directory: internal/core-rs
+
+      - name: Copy Rust lib to path Go expects
+        run: |
+          mkdir -p internal/core-rs/target/release
+          cp "internal/core-rs/target/${{ matrix.rust_target }}/release/libdump_core.a" internal/core-rs/target/release/
+        shell: bash
 
       - name: Set up Go
         uses: actions/setup-go@v5
