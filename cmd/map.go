@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/SL1C3D-L4BS/dump/internal/engine"
@@ -17,13 +19,16 @@ var (
 	mapSchemaPath string
 	mapFormat     string
 	mapOutput     string
+	mapDBURL      string
+	mapQuery      string
+	mapInputType  string
 )
 
 var mapCmd = &cobra.Command{
 	Use:   "map [input file]",
 	Short: "Map input data using a YAML schema (streaming)",
-	Long:  `Streams JSONL from the input file, applies the schema mapping, and writes JSONL or Parquet to stdout/output. Reports performance and Vericore seal to stderr.`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `Streams from a file (JSONL/CSV), or a SQL query when --db-url is set, applies the schema mapping, and writes JSONL or Parquet. Reports performance and Vericore seal to stderr.`,
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runMap,
 }
 
@@ -31,20 +36,49 @@ func init() {
 	mapCmd.Flags().StringVar(&mapSchemaPath, "schema", "", "Path to the YAML mapping schema (required)")
 	mapCmd.Flags().StringVar(&mapFormat, "format", "jsonl", "Output format: jsonl or parquet")
 	mapCmd.Flags().StringVar(&mapOutput, "output", "", "Output file path (required for parquet; default stdout for jsonl)")
+	mapCmd.Flags().StringVar(&mapDBURL, "db-url", "", "Database URL (postgres://... or file:path.db) to query instead of file input")
+	mapCmd.Flags().StringVar(&mapQuery, "query", "SELECT * FROM users", "SQL query to run when --db-url is set")
+	mapCmd.Flags().StringVar(&mapInputType, "input-type", "", "Override input type: jsonl, csv (default: auto from file extension)")
 	_ = mapCmd.MarkFlagRequired("schema")
 }
 
 func runMap(cmd *cobra.Command, args []string) error {
-	inputPath := args[0]
 	if mapFormat == "parquet" && mapOutput == "" {
 		return fmt.Errorf("--output is required when --format=parquet")
 	}
 
-	f, err := os.Open(inputPath)
-	if err != nil {
-		return fmt.Errorf("open input: %w", err)
+	var in io.ReadCloser
+	if mapDBURL != "" {
+		sqlReader, err := engine.NewSQLReader(mapDBURL, mapQuery)
+		if err != nil {
+			return fmt.Errorf("sql source: %w", err)
+		}
+		defer sqlReader.Close()
+		in = sqlReader
+	} else {
+		if len(args) < 1 {
+			return fmt.Errorf("input file required when not using --db-url")
+		}
+		inputPath := args[0]
+		f, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("open input: %w", err)
+		}
+		defer f.Close()
+		typ := mapInputType
+		if typ == "" {
+			if strings.HasSuffix(strings.ToLower(inputPath), ".csv") {
+				typ = "csv"
+			} else {
+				typ = "jsonl"
+			}
+		}
+		if typ == "csv" {
+			in = io.NopCloser(engine.NewCSVReader(f))
+		} else {
+			in = f
+		}
 	}
-	defer f.Close()
 
 	schema, err := engine.LoadSchema(mapSchemaPath)
 	if err != nil {
@@ -83,7 +117,7 @@ func runMap(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	rows, err := engine.MapStream(f, schema, sink)
+	rows, err := engine.MapStream(in, schema, sink)
 	if err != nil {
 		return fmt.Errorf("map stream: %w", err)
 	}

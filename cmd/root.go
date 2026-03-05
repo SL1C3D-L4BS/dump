@@ -22,4 +22,5 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(inferCmd)
 	rootCmd.AddCommand(mapCmd)
+	rootCmd.AddCommand(verifyCmd)
 }

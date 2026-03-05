@@ -1,3 +1,6 @@
+//go:build !cgo
+// +build !cgo
+
 package integrity
 
 import (
@@ -11,7 +14,7 @@ import (
 )
 
 // SignResult hashes the file, appends the hash to an MMR, signs it with ML-DSA (PQC),
-// and returns the Vericore Seal: MMR root, PQC signature, and file hash.
+// and returns the Vericore Seal. Go implementation (used when building without cgo).
 func SignResult(filePath string) (string, error) {
 	data, err := readFile(filePath)
 	if err != nil {
@@ -41,7 +44,7 @@ func SignResult(filePath string) (string, error) {
 		hex.EncodeToString(root),
 		hex.EncodeToString(proof.PQCSignature),
 		hex.EncodeToString(h))
-	_ = pubKey // verifier would use: tree.VerifyProof(proof, pubKey, root)
+	_ = pubKey
 	return seal, nil
 }
 

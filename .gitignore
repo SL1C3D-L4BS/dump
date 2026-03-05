@@ -1,9 +1,21 @@
 # Binary
 /dump
+/dump-api
+/dump-cgo
+/dump-go
 *.exe
 
 # Local test/output artifacts
 out.jsonl
 out.parquet
+
+# Dependencies / caches
+.pnpm-store/
+
+# Editor
+.vscode/
+
+# Rust build
+internal/core-rs/target/
 
 # (Demo crm_schema.yaml and clean_crm.parquet are committed so demo works without Ollama.)

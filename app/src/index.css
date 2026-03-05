@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Frontier / Cyber-Auditor theme — dark by default, violet accents, Vericore seal glow */
+:root {
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --muted: 240 5% 12%;
+  --muted-foreground: 240 5% 65%;
+  --border: 240 5% 18%;
+  --verified: 142 76% 42%;
+  --tampered: 0 84% 55%;
+  --accent: 263 70% 58%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* PQC Verified glow — tangible cryptography */
+.pqc-verified-glow {
+  box-shadow: 0 0 20px hsl(var(--verified) / 0.4), 0 0 40px hsl(var(--verified) / 0.2);
+}
+.pqc-tampered-glow {
+  box-shadow: 0 0 20px hsl(var(--tampered) / 0.3);
+}
+
+/* React Flow node labels — readable on dark nodes */
+.react-flow__node {
+  color: #f4f4f5;
+}
+.react-flow__node .react-flow__node-label {
+  color: #f4f4f5 !important;
+}

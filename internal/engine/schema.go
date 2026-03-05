@@ -8,14 +8,14 @@ import (
 
 // MappingRule defines a single field mapping: source path (e.g. gjson path) → target field.
 type MappingRule struct {
-	TargetField string `yaml:"target_field"`
-	SourcePath  string `yaml:"source_path"`
-	Type        string `yaml:"type"`
+	TargetField string `yaml:"target_field" json:"target_field"`
+	SourcePath  string `yaml:"source_path" json:"source_path"`
+	Type        string `yaml:"type" json:"type"`
 }
 
 // Schema is the YAML mapping manifest (matches LLM-generated schema).
 type Schema struct {
-	Rules []MappingRule `yaml:"rules"`
+	Rules []MappingRule `yaml:"rules" json:"rules"`
 }
 
 // LoadSchema reads and parses a YAML schema file from path.

@@ -1,0 +1,22 @@
+[package]
+name = "dump-core"
+version = "0.1.0"
+edition = "2021"
+description = "Rust performance core for DUMP: mapping and PQC signing"
+
+[lib]
+name = "dump_core"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Arrow + IPC for zero-copy batch mapping
+arrow = { version = "58", default-features = false }
+arrow-array = { version = "58", default-features = false }
+arrow-schema = { version = "58", default-features = false }
+arrow-ipc = { version = "58", default-features = false }
+pqcrypto-dilithium = "0.5"
+pqcrypto-traits = "0.3"
+sha2 = "0.10"
+libc = "0.2"
