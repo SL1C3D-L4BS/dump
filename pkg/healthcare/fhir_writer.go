@@ -1,13 +1,14 @@
-// Package engine: streaming FHIR Bundle writer (RowSink that wraps rows in a Bundle envelope).
+// Package healthcare: streaming FHIR Bundle writer (RowSink that wraps rows in a Bundle envelope).
 
-package engine
+package healthcare
 
 import (
 	"io"
 )
 
-// FHIRWriter writes mapped rows as FHIR Bundle entries. Implements RowSink.
+// FHIRWriter writes mapped rows as FHIR Bundle entries.
 // On first use writes the opening envelope; on Close() writes the closing ]} and flushes.
+// Implements the engine.RowSink interface (WriteRow(row []byte) error).
 type FHIRWriter struct {
 	w       io.Writer
 	started bool
@@ -18,7 +19,7 @@ func NewFHIRWriter(w io.Writer) *FHIRWriter {
 	return &FHIRWriter{w: w, started: false}
 }
 
-// WriteRow implements RowSink. Wraps row in {"resource": <row>} and writes; adds commas between entries.
+// WriteRow wraps row in {"resource": <row>} and writes; adds commas between entries.
 func (f *FHIRWriter) WriteRow(row []byte) error {
 	if !f.started {
 		_, err := f.w.Write([]byte(`{"resourceType":"Bundle","type":"collection","entry":[`))

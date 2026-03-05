@@ -1,8 +1,6 @@
-// Package engine: X12 stateful reader with hierarchical loops (837 claims, 835 payments).
-// Parses segment-terminator (~) and element-separator (*) delimited EDI, maintains a
-// context stack from LoopTriggers, builds a nested map, and yields one row per YieldTrigger (e.g. CLM).
+// Package healthcare: X12 stateful reader (837 claims, 835 payments).
 
-package engine
+package healthcare
 
 import (
 	"bufio"
@@ -15,21 +13,20 @@ import (
 	"github.com/SL1C3D-L4BS/dump/internal/dialects"
 )
 
-// X12Reader reads X12 EDI (e.g. 837, 835), maintains loop context, builds a nested
-// map per transaction, and implements io.Reader by streaming one JSONL row per yield trigger.
+// X12Reader reads X12 EDI and implements io.Reader by streaming one JSONL row per yield trigger.
 type X12Reader struct {
-	scanner     *bufio.Scanner
-	dialect     *dialects.Dialect
-	segTerm     string
-	elemSep     string
-	contextStack []string
-	tree        map[string]interface{}
+	scanner       *bufio.Scanner
+	dialect       *dialects.Dialect
+	segTerm       string
+	elemSep       string
+	contextStack  []string
+	tree          map[string]interface{}
 	inTransaction bool
-	buf         []byte
-	segmentIndex map[string]int
+	buf           []byte
+	segmentIndex  map[string]int
 }
 
-// NewX12Reader creates an X12 reader that yields one JSONL row per YieldTrigger segment (e.g. CLM).
+// NewX12Reader creates a reader that yields one JSONL row per YieldTrigger segment (e.g. CLM).
 func NewX12Reader(r io.Reader, dialect *dialects.Dialect) *X12Reader {
 	segTerm := dialect.Delimiters.Segment
 	if segTerm == "" {
@@ -49,9 +46,6 @@ func NewX12Reader(r io.Reader, dialect *dialects.Dialect) *X12Reader {
 		dialect:        dialect,
 		segTerm:        segTerm,
 		elemSep:        elemSep,
-		contextStack:   nil,
-		tree:           nil,
-		inTransaction:  false,
 		segmentIndex:   make(map[string]int),
 	}
 }
@@ -78,7 +72,7 @@ func splitX12Segments(segTerm string) bufio.SplitFunc {
 	}
 }
 
-// Read implements io.Reader. Streams JSONL (one line per yielded claim/row).
+// Read implements io.Reader.
 func (x *X12Reader) Read(p []byte) (n int, err error) {
 	for len(x.buf) < len(p) {
 		row, err := x.nextRow()
@@ -110,8 +104,7 @@ func (x *X12Reader) Read(p []byte) (n int, err error) {
 
 func (x *X12Reader) nextRow() (map[string]interface{}, error) {
 	for x.scanner.Scan() {
-		segRaw := x.scanner.Text()
-		segRaw = strings.TrimSpace(segRaw)
+		segRaw := strings.TrimSpace(x.scanner.Text())
 		if segRaw == "" {
 			continue
 		}
@@ -119,7 +112,6 @@ func (x *X12Reader) nextRow() (map[string]interface{}, error) {
 		if segID == "" {
 			continue
 		}
-
 		stSeg := x.dialect.TransactionBoundary.Start
 		seSeg := x.dialect.TransactionBoundary.End
 		if stSeg == "" {
@@ -128,7 +120,6 @@ func (x *X12Reader) nextRow() (map[string]interface{}, error) {
 		if seSeg == "" {
 			seSeg = "SE"
 		}
-
 		if segID == stSeg {
 			x.inTransaction = true
 			x.contextStack = nil
@@ -139,12 +130,9 @@ func (x *X12Reader) nextRow() (map[string]interface{}, error) {
 			x.inTransaction = false
 			continue
 		}
-
 		if !x.inTransaction {
 			continue
 		}
-
-		// Evaluate loop triggers
 		if rules := x.dialect.LoopTriggers[segID]; len(rules) > 0 {
 			for _, r := range rules {
 				if r.ElementIndex >= 0 && r.ElementIndex < len(elements) && strings.TrimSpace(elements[r.ElementIndex]) == r.Value {
@@ -153,14 +141,9 @@ func (x *X12Reader) nextRow() (map[string]interface{}, error) {
 				}
 			}
 		}
-
-		// Insert segment at leaf of context stack
 		x.insertSegment(segID, elements)
-
-		// Yield trigger
 		if x.dialect.YieldTrigger.Segment != "" && segID == x.dialect.YieldTrigger.Segment {
-			out := x.copyTree(x.tree)
-			return out, nil
+			return x.copyTree(x.tree), nil
 		}
 	}
 	if err := x.scanner.Err(); err != nil {
@@ -180,7 +163,6 @@ func (x *X12Reader) parseSegment(segRaw string) (segID string, elements []string
 	return parts[0], parts[1:]
 }
 
-// insertSegment places the segment into the tree at the path given by contextStack.
 func (x *X12Reader) insertSegment(segID string, elements []string) {
 	idx := x.segmentIndex[segID]
 	x.segmentIndex[segID] = idx + 1
@@ -194,16 +176,14 @@ func (x *X12Reader) insertSegment(segID string, elements []string) {
 		name := x12FieldNameAt(names, i)
 		segMap[name] = v
 	}
-
 	cur := x.tree
-	for i, loopName := range x.contextStack {
+	for _, loopName := range x.contextStack {
 		next, _ := cur[loopName].(map[string]interface{})
 		if next == nil {
 			next = make(map[string]interface{})
 			cur[loopName] = next
 		}
 		cur = next
-		_ = i
 	}
 	cur[key] = segMap
 }

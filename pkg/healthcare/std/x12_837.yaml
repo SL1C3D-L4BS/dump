@@ -11,6 +11,9 @@ transaction_boundary:
   start: ST
   end: SE
 
+yield_trigger:
+  segment: CLM
+
 segments:
   ISA:
     - AuthorizationInfoQualifier

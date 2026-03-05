@@ -10,16 +10,20 @@ import (
 )
 
 var (
-	proxyUpstream string
-	proxySchema   string
-	proxyXMLBlock string
-	proxyPort     int
+	proxyUpstream   string
+	proxySchema     string
+	proxyXMLBlock   string
+	proxyPort       int
+	proxyVirtualize bool
 )
 
 var proxyCmd = &cobra.Command{
 	Use:   "proxy",
-	Short: "Run the JIT sidecar proxy (translate upstream XML to JSONL on the fly)",
-	Long:  `Starts an HTTP server that forwards requests to an upstream URL and streams the response through the DUMP mapping engine, returning translated JSONL (NDJSON).`,
+	Short: "Run the JIT sidecar proxy (XML/EDI → JSON/FHIR virtualization)",
+	Long: `Starts an HTTP server that forwards requests to an upstream URL and streams the response
+through the DUMP mapping engine. In default mode, upstream XML is translated to JSONL (NDJSON).
+When --virtualize is enabled, JSON requests are up-converted to X12 EDI, and X12 responses are
+down-converted to FHIR/JSON for modern clients.`,
 	Args:  cobra.NoArgs,
 	RunE:  runProxy,
 }
@@ -29,12 +33,13 @@ func init() {
 	proxyCmd.Flags().StringVar(&proxySchema, "schema", "", "Path to the DUMP YAML mapping schema")
 	proxyCmd.Flags().StringVar(&proxyXMLBlock, "xml-block", "Record", "Repeating XML element to split on for streaming")
 	proxyCmd.Flags().IntVar(&proxyPort, "port", 8081, "Port to listen on")
+	proxyCmd.Flags().BoolVar(&proxyVirtualize, "virtualize", false, "Enable bi-directional JSON↔EDI/X12 virtualization")
 	_ = proxyCmd.MarkFlagRequired("upstream")
 	_ = proxyCmd.MarkFlagRequired("schema")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	jit, err := proxy.NewJITProxy(proxyUpstream, proxySchema, proxyXMLBlock)
+	jit, err := proxy.NewJITProxy(proxyUpstream, proxySchema, proxyXMLBlock, proxyVirtualize)
 	if err != nil {
 		return fmt.Errorf("init proxy: %w", err)
 	}

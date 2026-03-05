@@ -1,6 +1,6 @@
-// Package engine: streaming FHIR reader (Bundle or single resource) as RowReader and io.Reader.
+// Package healthcare: streaming FHIR reader (Bundle or single resource) as RowReader and io.Reader.
 
-package engine
+package healthcare
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 )
 
 // FHIRReader reads FHIR JSON (Bundle or standalone resource) and yields one resource per Next().
-// Implements RowReader. Also implements io.Reader by streaming JSONL (one line per resource) for MapStream.
+// Implements io.Reader by streaming JSONL (one line per resource) for MapStream.
 type FHIRReader struct {
 	decoder *json.Decoder
 	state   fhirReaderState
@@ -33,7 +33,7 @@ func NewFHIRReader(r io.Reader) *FHIRReader {
 	}
 }
 
-// Next implements RowReader. Yields each entry.resource from a Bundle, or the single resource once.
+// Next yields each entry.resource from a Bundle, or the single resource once. Implements engine.RowReader contract.
 func (f *FHIRReader) Next() (map[string]interface{}, error) {
 	if f.state == fhirStateDone {
 		return nil, io.EOF
@@ -48,7 +48,6 @@ func (f *FHIRReader) Next() (map[string]interface{}, error) {
 		}
 		f.state = fhirStateScanRoot
 	}
-	// Scan root object for resourceType and entry
 	for f.state == fhirStateScanRoot {
 		tok, err := f.decoder.Token()
 		if err != nil {
@@ -71,7 +70,6 @@ func (f *FHIRReader) Next() (map[string]interface{}, error) {
 			if rt, ok := next.(string); ok && rt == "Bundle" {
 				continue
 			}
-			// Standalone resource: value is resourceType (e.g. "Patient"); decode rest of object
 			if rt, ok := next.(string); ok {
 				rest := map[string]interface{}{"resourceType": rt}
 				for f.decoder.More() {
@@ -86,7 +84,7 @@ func (f *FHIRReader) Next() (map[string]interface{}, error) {
 					}
 					rest[keyStr] = v
 				}
-				f.decoder.Token() // consume }
+				f.decoder.Token()
 				f.state = fhirStateDone
 				return rest, nil
 			}
@@ -99,14 +97,12 @@ func (f *FHIRReader) Next() (map[string]interface{}, error) {
 				f.state = fhirStateInEntryArray
 				break
 			}
-			// value wasn't array, skip it
 			if delim == json.Delim('{') {
 				skipToMatching(f.decoder, json.Delim('}'))
 			} else if delim == json.Delim('[') {
 				skipToMatching(f.decoder, json.Delim(']'))
 			}
 		default:
-			// Skip this key's value
 			next, err := f.decoder.Token()
 			if err != nil {
 				return nil, err
@@ -122,7 +118,7 @@ func (f *FHIRReader) Next() (map[string]interface{}, error) {
 	}
 	if f.state == fhirStateInEntryArray {
 		if !f.decoder.More() {
-			f.decoder.Token() // ]
+			f.decoder.Token()
 			f.state = fhirStateDone
 			return nil, io.EOF
 		}

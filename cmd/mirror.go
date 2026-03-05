@@ -3,8 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	vericrypto "github.com/SL1C3D-L4BS/dump/internal/crypto"
 	"github.com/SL1C3D-L4BS/dump/internal/engine"
+	"github.com/SL1C3D-L4BS/dump/internal/integrity"
 	"github.com/spf13/cobra"
 )
 
@@ -67,5 +70,20 @@ func runMirror(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintln(os.Stderr, mirrorStatusViolet)
+
+	// Best-effort integrity seal + audit for sqlite targets.
+	if strings.HasPrefix(mirrorTo, "sqlite://") {
+		targetPath := strings.TrimPrefix(mirrorTo, "sqlite://")
+		if targetPath != "" {
+			if seal, err := integrity.SignResult(targetPath); err == nil {
+				fmt.Fprintf(os.Stderr, "%s%s%s\n", violetANSI, seal, resetANSI)
+				if err := vericrypto.AppendFromSeal("mirror", targetPath, seal); err != nil {
+					fmt.Fprintf(os.Stderr, "audit log append failed: %v\n", err)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "mirror integrity sign failed: %v\n", err)
+			}
+		}
+	}
 	return nil
 }

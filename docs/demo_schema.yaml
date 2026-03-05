@@ -1,0 +1,15 @@
+# Minimal X12 837 mapping for demo: CLM segment → Parquet columns.
+# Use with: dump map stress_837.x12 --schema=docs/demo_schema.yaml --input-type=x12 --industry=healthcare --format=parquet --output=vericore_ingest/stress_mapped.parquet --mask=pii
+rules:
+  - source_path: CLM.ClaimSubmitterIdentifier
+    target_field: claim_id
+    type: string
+  - source_path: CLM.MonetaryAmount
+    target_field: amount
+    type: string
+  - source_path: CLM.PlaceOfServiceCode
+    target_field: place_of_service
+    type: string
+  - source_path: CLM.ServiceTypeCode
+    target_field: service_type
+    type: string

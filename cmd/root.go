@@ -6,6 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	industryFlag string
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "dump",
 	Short: "Data Universal Mapping Platform — AI-assisted schema inference and hyperspeed data mapping",
@@ -20,15 +24,21 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&industryFlag, "industry", "", "Industry mode (e.g. healthcare) for protocol defaults and standard dialects")
 	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(cryptoCmd)
 	rootCmd.AddCommand(decodeCmd)
 	rootCmd.AddCommand(diffCmd)
+	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(fanoutCmd)
+	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(inferCmd)
 	rootCmd.AddCommand(ingestCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(mirrorCmd)
 	rootCmd.AddCommand(nl2sCmd)
 	rootCmd.AddCommand(proxyCmd)
+	rootCmd.AddCommand(scanCmd)
+	rootCmd.AddCommand(stressCmd)
 	rootCmd.AddCommand(verifyCmd)
 }

@@ -1,6 +1,14 @@
 # DUMP build and extension targets
 
-.PHONY: wasm wasm-exec extension
+.PHONY: wasm wasm-exec extension build build-release
+
+# Production binary: strip debug symbols and DWARF (-s -w).
+build-release:
+	go build -ldflags "-s -w" -o dump .
+
+# Default build (with symbols, for development).
+build:
+	go build -o dump .
 
 # Build WASM binary for the Chrome extension (requires GOOS=js GOARCH=wasm).
 wasm:

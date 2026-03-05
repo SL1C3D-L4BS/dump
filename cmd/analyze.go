@@ -12,6 +12,7 @@ import (
 	"github.com/SL1C3D-L4BS/dump/internal/dialects"
 	"github.com/SL1C3D-L4BS/dump/internal/engine"
 	"github.com/SL1C3D-L4BS/dump/internal/inference"
+	"github.com/SL1C3D-L4BS/dump/pkg/healthcare"
 	"github.com/spf13/cobra"
 )
 
@@ -39,6 +40,9 @@ func init() {
 }
 
 func runAnalyze(cmd *cobra.Command, args []string) error {
+	if industryFlag == "healthcare" {
+		fmt.Fprintf(os.Stderr, "%s🏥 Industry Mode: Healthcare. Standard HL7/X12 protocols engaged.%s\n", violetANSI, resetANSI)
+	}
 	path := args[0]
 	f, err := os.Open(path)
 	if err != nil {
@@ -53,6 +57,9 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read file: %w", err)
 	}
 	format := engine.DetectFormat(peek)
+	if industryFlag == "healthcare" && format == "unknown" {
+		format = "edi"
+	}
 	fmt.Fprintf(os.Stderr, "🔍 Format detected: %s\n", format)
 	if format == "unknown" {
 		fmt.Fprintf(os.Stderr, "   (sampling as JSONL; use --input-type with dump map if format is known)\n")
@@ -65,7 +72,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		if bytes.Contains(peek, []byte("ISA*")) {
 			standardName = "x12_837"
 		}
-		baseDialect, err := dialects.LoadStandardDialect(standardName)
+		baseDialect, err := healthcare.LoadStandardDialect(standardName)
 		if err != nil {
 			return fmt.Errorf("load standard dialect: %w", err)
 		}
@@ -119,6 +126,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				}
 			}
 			mergedDialect.MergeDialect(customDialect)
+		} else if mergedDialect == nil {
+			mergedDialect = baseDialect
 		}
 	}
 
@@ -134,7 +143,18 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	}
 	defer f2.Close()
 
-	sample, err := engine.ExtractSampleWithDialect(f2, format, analyzeDialect, analyzeSampleRows, mergedDialect)
+	dialectPath := analyzeDialect
+	if industryFlag == "healthcare" && dialectPath == "" && mergedDialect == nil && format == "edi" {
+		standardName := "hl7_v25"
+		if bytes.Contains(peek, []byte("ISA*")) {
+			standardName = "x12_837"
+		}
+		stdDialect, err := healthcare.LoadStandardDialect(standardName)
+		if err == nil {
+			mergedDialect = stdDialect
+		}
+	}
+	sample, err := engine.ExtractSampleWithDialect(f2, format, dialectPath, analyzeSampleRows, mergedDialect)
 	if err != nil {
 		return fmt.Errorf("extract sample: %w", err)
 	}

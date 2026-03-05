@@ -1,15 +1,18 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
+	vericrypto "github.com/SL1C3D-L4BS/dump/internal/crypto"
 	"github.com/SL1C3D-L4BS/dump/internal/dialects"
 	"github.com/SL1C3D-L4BS/dump/internal/engine"
 	"github.com/SL1C3D-L4BS/dump/internal/integrity"
+	"github.com/SL1C3D-L4BS/dump/pkg/healthcare"
 	"github.com/spf13/cobra"
 )
 
@@ -53,6 +56,9 @@ func runMap(cmd *cobra.Command, args []string) error {
 	if mapFormat == "parquet" && mapOutput == "" {
 		return fmt.Errorf("--output is required when --format=parquet")
 	}
+	if industryFlag == "healthcare" {
+		fmt.Fprintf(os.Stderr, "%s🏥 Industry Mode: Healthcare. Standard HL7/X12 protocols engaged.%s\n", violetANSI, resetANSI)
+	}
 	if mapFormat == "fhir" || mapInputType == "fhir" {
 		fmt.Fprintf(os.Stderr, "%s⚕️ SL1C3D-L4BS FHIR Adapter Active: Bridging HL7/JSON to FHIR Bundles.%s\n", violetANSI, resetANSI)
 	}
@@ -87,7 +93,6 @@ func runMap(cmd *cobra.Command, args []string) error {
 			case strings.HasSuffix(strings.ToLower(inputPath), ".x12"):
 				typ = "x12"
 			case strings.HasSuffix(strings.ToLower(inputPath), ".json"):
-				// Could be FHIR Bundle or plain JSON; default jsonl unless user says fhir
 				if mapInputType == "fhir" {
 					typ = "fhir"
 				} else {
@@ -99,6 +104,25 @@ func runMap(cmd *cobra.Command, args []string) error {
 			if mapInputType == "fhir" {
 				typ = "fhir"
 			}
+			if industryFlag == "healthcare" && typ == "jsonl" {
+				typ = "edi"
+			}
+		}
+		var dialect *dialects.Dialect
+		if (typ == "edi" || typ == "x12") && mapDialect == "" && industryFlag == "healthcare" {
+			peek := make([]byte, 1024)
+			n, _ := f.Read(peek)
+			peek = peek[:n]
+			standardName := "hl7_v25"
+			if bytes.Contains(peek, []byte("ISA*")) {
+				standardName = "x12_837"
+			}
+			var err error
+			dialect, err = healthcare.LoadStandardDialect(standardName)
+			if err != nil {
+				return fmt.Errorf("load standard dialect: %w", err)
+			}
+			_, _ = f.Seek(0, io.SeekStart)
 		}
 		switch typ {
 		case "csv":
@@ -106,26 +130,32 @@ func runMap(cmd *cobra.Command, args []string) error {
 		case "xml":
 			in = io.NopCloser(engine.NewXMLReader(f, mapXMLBlock))
 		case "edi":
-			if mapDialect == "" {
-				return fmt.Errorf("--dialect is required when --input-type is edi")
-			}
-			dialect, err := dialects.LoadDialect(mapDialect)
-			if err != nil {
-				return fmt.Errorf("load dialect: %w", err)
+			if dialect == nil {
+				if mapDialect == "" {
+					return fmt.Errorf("--dialect is required when --input-type is edi (or use --industry healthcare)")
+				}
+				var err error
+				dialect, err = dialects.LoadDialect(mapDialect)
+				if err != nil {
+					return fmt.Errorf("load dialect: %w", err)
+				}
 			}
 			in = io.NopCloser(engine.NewEDIReader(f, dialect))
 		case "x12":
-			if mapDialect == "" {
-				return fmt.Errorf("--dialect is required when --input-type is x12")
-			}
-			dialect, err := dialects.LoadDialect(mapDialect)
-			if err != nil {
-				return fmt.Errorf("load dialect: %w", err)
+			if dialect == nil {
+				if mapDialect == "" {
+					return fmt.Errorf("--dialect is required when --input-type is x12 (or use --industry healthcare)")
+				}
+				var err error
+				dialect, err = dialects.LoadDialect(mapDialect)
+				if err != nil {
+					return fmt.Errorf("load dialect: %w", err)
+				}
 			}
 			fmt.Fprintf(os.Stderr, "%s🏥 X12 Stateful Parsing Active: Tracking hierarchical loops for billing reconciliation.%s\n", violetANSI, resetANSI)
-			in = io.NopCloser(engine.NewX12Reader(f, dialect))
+			in = io.NopCloser(healthcare.NewX12Reader(f, dialect))
 		case "fhir":
-			in = io.NopCloser(engine.NewFHIRReader(f))
+			in = io.NopCloser(healthcare.NewFHIRReader(f))
 		default:
 			in = f
 		}
@@ -161,11 +191,11 @@ func runMap(cmd *cobra.Command, args []string) error {
 			}
 			defer outFile.Close()
 			outPath = mapOutput
-			fw := engine.NewFHIRWriter(outFile)
+			fw := healthcare.NewFHIRWriter(outFile)
 			sink = fw
 			closer = fw
 		} else {
-			fw := engine.NewFHIRWriter(os.Stdout)
+			fw := healthcare.NewFHIRWriter(os.Stdout)
 			sink = fw
 			closer = fw
 		}
@@ -207,6 +237,10 @@ func runMap(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("sign result: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "%s%s%s\n", violetANSI, seal, resetANSI)
+		// Best-effort append to persistent MMR audit log.
+		if err := vericrypto.AppendFromSeal("map", outPath, seal); err != nil {
+			fmt.Fprintf(os.Stderr, "audit log append failed: %v\n", err)
+		}
 	}
 	return nil
 }
