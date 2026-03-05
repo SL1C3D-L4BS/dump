@@ -21,9 +21,11 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(decodeCmd)
 	rootCmd.AddCommand(fanoutCmd)
 	rootCmd.AddCommand(inferCmd)
 	rootCmd.AddCommand(mapCmd)
+	rootCmd.AddCommand(mirrorCmd)
 	rootCmd.AddCommand(proxyCmd)
 	rootCmd.AddCommand(verifyCmd)
 }

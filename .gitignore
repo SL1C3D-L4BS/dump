@@ -8,6 +8,7 @@
 # Local test/output artifacts
 out.jsonl
 out.parquet
+*.db
 
 # Dependencies / caches
 .pnpm-store/
