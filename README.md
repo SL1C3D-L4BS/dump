@@ -1,36 +1,65 @@
-# 🗑️ DUMP (Data Universal Mapping Platform)
+# DUMP (Data Universal Mapping Platform)
 
-**AI-Assisted Schema Inference and Hyperspeed Data Mapping.**
+**AI-assisted schema inference and high-performance data mapping.** Map JSON, Parquet, SQL, CSV, and more using local Ollama for inference and a Rust core for zero-copy streaming and PQC integrity.
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/vericore/dump)](https://golang.org/)
-[![Vericore Integrity](https://img.shields.io/badge/PQC-Secured-8A2BE2)](#)
-
----
-
-## 🔒 **100% Air-Gapped & Privacy-First**
-
-**DUMP is powered entirely by local Ollama models.** No cloud APIs, no telemetry, no data ever leaves your machine. Schema inference and mapping run on your own hardware—unicorn-tier security for sensitive data pipelines.
+[![Go Version](https://img.shields.io/github/go-mod/go-version/SL1C3D-L4BS/dump)](https://golang.org/)
+[![PQC-Secured](https://img.shields.io/badge/PQC-Secured-8A2BE2)](#)
 
 ---
 
-The "Data Formatting Tax" is dead. DUMP is a high-performance CLI designed to instantly map disparate data formats (JSON, Parquet, SQL, Protobuf) using AI-inferred schemas.
+## Privacy-first
 
-Instead of writing hundreds of lines of boilerplate parsing logic, you provide DUMP with a sample file. It uses a **local LLM (Ollama)** to infer the semantic intent, generates a highly optimized YAML mapping manifest, and compiles it into a streaming data pipeline.
+DUMP uses **local Ollama** for schema inference and mapping suggestions. No cloud APIs or telemetry; data stays on your machine.
 
-## 📥 Installation
+---
 
-- **Pre-compiled binaries:** Download the latest release for your OS and architecture from the [Releases](https://github.com/vericore/dump/releases) page. Binaries are built for Linux (amd64/arm64), macOS (Intel & Apple Silicon), and Windows (amd64).
-- **From source:**  
-  `go install github.com/vericore/dump@latest`
+## What’s in the repo
 
-## 🚀 The workflow
+* **CLI** (`cmd/`) — Infer schemas, map data, verify sealed Parquet (Go + optional Rust via cgo).
+* **Rust core** (`internal/core-rs/`) — Mapping engine, Vericore PQC (Dilithium2), Arrow IPC.
+* **API** (`api/`) — Fiber HTTP server: POST `/map`, verification, Ollama discovery.
+* **Desktop app** (`app/`) — Tauri v2 + React + Vite: mapping graph, verification dropzone, Ollama panel, live data preview.
 
-1. **Infer:** `dump infer source.json --target=protobuf > schema.yaml`
-2. **Map:** `dump map source.json --schema=schema.yaml > output.pb`
-3. **Verify:** Every mapped file is cryptographically signed using the Vericore Post-Quantum MMR.
+---
 
-## ⚡ Architecture
+## Installation
 
-* **CLI Engine:** Built on Go (`spf13/cobra`) for instantaneous startup and concurrent data streaming.
-* **AI Inference Layer:** **Ollama-only.** Local LLMs infer schemas, map nested fields, unroll arrays, and cast types—no cloud dependency.
-* **Zero-Copy Streaming:** Chunked readers process multi-gigabyte files without blowing up RAM.
+* **Pre-built binaries:** See [Releases](https://github.com/SL1C3D-L4BS/dump/releases) for your OS/arch.
+* **From source (Go only):**  
+  `go install github.com/SL1C3D-L4BS/dump@latest`
+
+---
+
+## Building from source
+
+* **Rust core + Go CLI (cgo):**  
+  `make`  
+  Builds Rust lib then `dump` and `dump-api`.
+* **Pure Go (no Rust):**  
+  `make go-only`  
+  Produces `dump` and `dump-api` without the Rust engine.
+* **API only (Rust-linked):**  
+  `make api`
+* **Desktop app:**  
+  From repo root, build Rust core first, then:
+  ```bash
+  cd app && pnpm install && pnpm tauri build
+  ```
+  Run in dev: `pnpm tauri dev`
+
+---
+
+## Workflow
+
+1. **Infer:** `dump infer source.json --target=parquet > schema.yaml`
+2. **Map:** `dump map source.json --schema=schema.yaml --format=parquet > output.parquet`
+3. **Verify:** Use the CLI or the desktop app to verify Parquet files sealed with the Vericore PQC MMR.
+
+---
+
+## Architecture
+
+* **CLI:** Go (Cobra), optional cgo link to Rust for mapping and verification.
+* **Rust core:** Schema application, row mapping, Arrow IPC, Dilithium2 signing/verification.
+* **Inference:** Ollama-only for schema and mapping suggestions.
+* **Desktop:** Tauri v2, React, Tailwind; calls into Rust core for mapping and verification.
