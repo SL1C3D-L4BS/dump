@@ -1,0 +1,66 @@
+# X12 835 (Remittance) base standard dialect (stub). Extend with Z-segments via Acronym Resolver.
+name: x12_835
+message_start_segment: ISA
+
+delimiters:
+  segment: "~"
+  field: "*"
+  component: ":"
+
+transaction_boundary:
+  start: ST
+  end: SE
+
+segments:
+  ISA:
+    - AuthorizationInfoQualifier
+    - AuthorizationInfo
+    - SecurityInfoQualifier
+    - SecurityInfo
+    - SenderIdQualifier
+    - SenderId
+    - ReceiverIdQualifier
+    - ReceiverId
+    - Date
+    - Time
+    - RepetitionSeparator
+    - Version
+    - ControlNumber
+    - AckRequested
+    - UsageIndicator
+    - ComponentElementSeparator
+  GS:
+    - FunctionalIdCode
+    - ApplicationSenderCode
+    - ApplicationReceiverCode
+    - Date
+    - Time
+    - GroupControlNumber
+    - ResponsibleAgencyCode
+    - Version
+  ST:
+    - TransactionSetIdCode
+    - TransactionSetControlNumber
+  BPR:
+    - TransactionHandlingCode
+    - MonetaryAmount
+    - CreditDebitFlag
+    - PaymentMethodCode
+    - PaymentFormatCode
+    - SenderDfiIdNumber
+    - SenderAccountNumber
+    - ReceiverDfiIdNumber
+    - ReceiverAccountNumber
+  TRN:
+    - TraceTypeCode
+    - ReferenceId
+    - OriginatingCompanyId
+    - ReferenceId
+  N1:
+    - EntityIdCode
+    - Name
+    - IdCodeQualifier
+    - IdCode
+  SE:
+    - SegmentCount
+    - TransactionSetControlNumber

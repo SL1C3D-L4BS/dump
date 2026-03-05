@@ -1,0 +1,66 @@
+# X12 837 (Claims) base standard dialect (stub). Extend with Z-segments via Acronym Resolver.
+name: x12_837
+message_start_segment: ISA
+
+delimiters:
+  segment: "~"
+  field: "*"
+  component: ":"
+
+transaction_boundary:
+  start: ST
+  end: SE
+
+segments:
+  ISA:
+    - AuthorizationInfoQualifier
+    - AuthorizationInfo
+    - SecurityInfoQualifier
+    - SecurityInfo
+    - SenderIdQualifier
+    - SenderId
+    - ReceiverIdQualifier
+    - ReceiverId
+    - Date
+    - Time
+    - RepetitionSeparator
+    - Version
+    - ControlNumber
+    - AckRequested
+    - UsageIndicator
+    - ComponentElementSeparator
+  GS:
+    - FunctionalIdCode
+    - ApplicationSenderCode
+    - ApplicationReceiverCode
+    - Date
+    - Time
+    - GroupControlNumber
+    - ResponsibleAgencyCode
+    - Version
+  ST:
+    - TransactionSetIdCode
+    - TransactionSetControlNumber
+  BHT:
+    - HierarchyStructureCode
+    - TransactionSetPurposeCode
+    - ReferenceId
+    - Date
+    - Time
+    - TransactionTypeCode
+  NM1:
+    - EntityIdCode
+    - EntityTypeQualifier
+    - NameLastOrOrganizationName
+    - NameFirst
+    - NameMiddle
+    - NamePrefix
+    - NameSuffix
+  CLM:
+    - ClaimSubmitterIdentifier
+    - MonetaryAmount
+    - PlaceOfServiceCode
+    - ServiceTypeCode
+  SE:
+    - SegmentCount
+    - TransactionSetControlNumber

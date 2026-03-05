@@ -43,6 +43,15 @@ type LoopTriggerRule struct {
 	EnterLoop    string `yaml:"enter_loop"`
 }
 
+// ParseDialect parses a dialect from YAML bytes (e.g. LLM-generated custom dialect).
+func ParseDialect(data []byte) (*Dialect, error) {
+	var d Dialect
+	if err := yaml.Unmarshal(data, &d); err != nil {
+		return nil, err
+	}
+	return normalizeDialect(&d), nil
+}
+
 // LoadDialect reads and parses a dialect YAML file from path.
 func LoadDialect(path string) (*Dialect, error) {
 	data, err := os.ReadFile(path)
@@ -53,6 +62,10 @@ func LoadDialect(path string) (*Dialect, error) {
 	if err := yaml.Unmarshal(data, &d); err != nil {
 		return nil, err
 	}
+	return normalizeDialect(&d), nil
+}
+
+func normalizeDialect(d *Dialect) *Dialect {
 	if d.Delimiters.Segment == "" {
 		d.Delimiters.Segment = "\n"
 	}
@@ -71,5 +84,19 @@ func LoadDialect(path string) (*Dialect, error) {
 	if d.TransactionBoundary.End == "" {
 		d.TransactionBoundary.End = "SE"
 	}
-	return &d, nil
+	return d
+}
+
+// MergeDialect merges segment definitions from other into d (in place).
+// Segments in other override or add to d.Segments. Other may be nil.
+func (d *Dialect) MergeDialect(other *Dialect) {
+	if other == nil || other.Segments == nil {
+		return
+	}
+	if d.Segments == nil {
+		d.Segments = make(map[string][]string)
+	}
+	for id, names := range other.Segments {
+		d.Segments[id] = names
+	}
 }

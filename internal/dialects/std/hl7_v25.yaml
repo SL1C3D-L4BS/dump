@@ -1,0 +1,41 @@
+# HL7 v2.5 base standard dialect (stub). Extend with Z-segments via Acronym Resolver.
+name: hl7_v25
+message_start_segment: MSH
+
+delimiters:
+  segment: "\n"
+  field: "|"
+  component: "^"
+
+segments:
+  MSH:
+    - SegmentType
+    - FieldSeparator
+    - EncodingCharacters
+    - SendingApplication
+    - SendingFacility
+    - ReceivingApplication
+    - ReceivingFacility
+    - DateTime
+    - Security
+    - MessageType
+    - MessageControlId
+    - ProcessingId
+    - VersionId
+  EVN:
+    - SegmentType
+    - EventType
+    - RecordedDateTime
+  PID:
+    - SegmentType
+    - SetId
+    - PatientId
+    - PatientName
+    - DateTimeOfBirth
+    - Sex
+  OBX:
+    - SegmentType
+    - SetId
+    - ValueType
+    - ObservationId
+    - ObservationValue

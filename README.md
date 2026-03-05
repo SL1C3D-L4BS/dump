@@ -60,7 +60,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 2. **Map:** `dump map source.json --schema=schema.yaml --format=parquet --output=output.parquet`  
    Use `--input-type xml`, `--input-type edi`, `--input-type x12`, or `--input-type fhir` (with `--dialect` for EDI/X12). Use `--format fhir` to write a FHIR Bundle. Add `--mask=pii` to anonymize PII in the stream.
 3. **Analyze (zero-knowledge):** `dump analyze mystery.txt --target=parquet`  
-   Detects format (jsonl, csv, xml, edi), samples the file, and infers a mapping via Ollama.
+   Detects format (jsonl, csv, xml, edi), samples the file, and infers a mapping via Ollama. For EDI/X12, the **Healthcare Dialect Pack & Acronym Resolver** (SL1C3D-L4BS) runs automatically: unknown or custom segments (e.g. Z-segments) are detected against embedded standards (`hl7_v25`, `x12_837`, `x12_835`), an LLM infers custom segment definitions, and the result is written to `custom_dialect.yaml` and merged with the standard dialect for schema mapping.
 4. **Fan-out:** `dump fanout --config fanout.yaml`  
    Multiplexes one stream to local files, S3, Prometheus Pushgateway, and/or Elasticsearch. Supports `--mask=pii`.
 5. **Proxy (JIT sidecar):** `dump proxy --upstream http://legacy.example.com/api --schema=schema.yaml --port=8081`  
@@ -79,7 +79,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 |----------|-------------|
 | `dump infer [file]`   | Infer a YAML mapping from sample data (Ollama). `--target`, `--from=json\|xml\|edi`, `--model` |
 | `dump map [file]`     | Map input to JSONL, Parquet, or FHIR Bundle. `--schema`, `--input-type` (jsonl/csv/xml/edi/x12/fhir), `--format` (jsonl/parquet/fhir), `--mask=pii`, `--dialect` (EDI/X12), `--xml-block` |
-| `dump analyze [file]` | Detect format and infer mapping from a mystery file. `--target`, `--model`, `--dialect` (optional for EDI) |
+| `dump analyze [file]` | Detect format and infer mapping from a mystery file. For EDI/X12, auto-resolves custom (Z-) segments via embedded dialect pack + Ollama. `--target`, `--model`, `--dialect` (optional for EDI) |
 | `dump fanout`        | Multi-target fan-out from a YAML config. `--config`, `--mask=pii` |
 | `dump proxy`         | HTTP sidecar: forward requests to upstream and stream mapped JSONL. `--upstream`, `--schema`, `--port`, `--xml-block` |
 | `dump verify [file]`  | Verify a file against its Vericore seal. `--seal`, `--seal-file` |
@@ -97,6 +97,7 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 * **Rust core:** Schema application, row mapping, Arrow IPC, Dilithium2 signing/verification.
 * **Inference:** Ollama-only for schema and mapping suggestions.
 * **Formats:** JSONL, CSV, XML (streaming), EDI/HL7 (with dialect YAML), SQL (Postgres, SQLite), Excel (XLSX), X12 (stateful loops), binary (bit-level for IoT), FHIR (streaming Bundle/single resource).
+* **Healthcare Dialect Pack:** Embedded standard dialects (`internal/dialects/std/`: `hl7_v25`, `x12_837`, `x12_835`) plus an LLM-driven **Acronym Resolver** that infers custom/undocumented segments (e.g. Z-segments) during `dump analyze` and writes `custom_dialect.yaml` for merged schema mapping.
 * **Sinks:** Local JSONL/Parquet/FHIR Bundle, S3, Prometheus Pushgateway, Elasticsearch; PII masking via `--mask=pii`.
 * **Desktop:** Tauri v2, React, Tailwind; calls into Rust core for mapping and verification.
 * **Browser:** Chrome DevTools extension (WASM) for heuristic Protobuf/gRPC-Web decoding in the Network panel.
