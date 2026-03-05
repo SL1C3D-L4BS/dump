@@ -1,0 +1,8 @@
+# XML with Record block: paths like Record.id, Record.name, Record.role
+rules:
+  - source_path: Record.id
+    target_field: id
+  - source_path: Record.name
+    target_field: name
+  - source_path: Record.role
+    target_field: role

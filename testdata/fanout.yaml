@@ -1,0 +1,21 @@
+# Sample fan-out config: one source, multiple targets.
+source:
+  type: jsonl
+  path: testdata/sample.jsonl
+schema: testdata/schema_passthrough.yaml
+targets:
+  - type: local
+    format: jsonl
+    path: testdata/fanout_out.jsonl
+  - type: local
+    format: parquet
+    path: testdata/fanout_out.parquet
+  # Uncomment and set URLs when testing enterprise targets:
+  # - type: s3
+  #   bucket: my-lake
+  #   key: data/out.jsonl
+  # - type: prometheus
+  #   url: http://localhost:9091
+  # - type: elasticsearch
+  #   url: http://localhost:9200
+  #   index: dump_logs

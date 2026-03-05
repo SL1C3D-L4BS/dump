@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SL1C3D-L4BS/dump/internal/dialects"
 	"github.com/SL1C3D-L4BS/dump/internal/engine"
 	"github.com/SL1C3D-L4BS/dump/internal/integrity"
 	"github.com/spf13/cobra"
@@ -22,6 +23,9 @@ var (
 	mapDBURL      string
 	mapQuery      string
 	mapInputType  string
+	mapDialect    string
+	mapXMLBlock   string
+	mapMask       string
 )
 
 var mapCmd = &cobra.Command{
@@ -38,7 +42,10 @@ func init() {
 	mapCmd.Flags().StringVar(&mapOutput, "output", "", "Output file path (required for parquet; default stdout for jsonl)")
 	mapCmd.Flags().StringVar(&mapDBURL, "db-url", "", "Database URL (postgres://... or file:path.db) to query instead of file input")
 	mapCmd.Flags().StringVar(&mapQuery, "query", "SELECT * FROM users", "SQL query to run when --db-url is set")
-	mapCmd.Flags().StringVar(&mapInputType, "input-type", "", "Override input type: jsonl, csv (default: auto from file extension)")
+	mapCmd.Flags().StringVar(&mapInputType, "input-type", "", "Override input type: jsonl, csv, xml, or edi (default: auto from file extension)")
+	mapCmd.Flags().StringVar(&mapDialect, "dialect", "", "Path to dialect YAML (required when input-type is edi)")
+	mapCmd.Flags().StringVar(&mapXMLBlock, "xml-block", "Record", "Repeating XML element name for xml input-type")
+	mapCmd.Flags().StringVar(&mapMask, "mask", "", "Enable semantic masking (e.g. pii to anonymize PII in the output stream)")
 	_ = mapCmd.MarkFlagRequired("schema")
 }
 
@@ -67,15 +74,32 @@ func runMap(cmd *cobra.Command, args []string) error {
 		defer f.Close()
 		typ := mapInputType
 		if typ == "" {
-			if strings.HasSuffix(strings.ToLower(inputPath), ".csv") {
+			switch {
+			case strings.HasSuffix(strings.ToLower(inputPath), ".csv"):
 				typ = "csv"
-			} else {
+			case strings.HasSuffix(strings.ToLower(inputPath), ".xml"):
+				typ = "xml"
+			case strings.HasSuffix(strings.ToLower(inputPath), ".edi"), strings.HasSuffix(strings.ToLower(inputPath), ".hl7"):
+				typ = "edi"
+			default:
 				typ = "jsonl"
 			}
 		}
-		if typ == "csv" {
+		switch typ {
+		case "csv":
 			in = io.NopCloser(engine.NewCSVReader(f))
-		} else {
+		case "xml":
+			in = io.NopCloser(engine.NewXMLReader(f, mapXMLBlock))
+		case "edi":
+			if mapDialect == "" {
+				return fmt.Errorf("--dialect is required when --input-type is edi")
+			}
+			dialect, err := dialects.LoadDialect(mapDialect)
+			if err != nil {
+				return fmt.Errorf("load dialect: %w", err)
+			}
+			in = io.NopCloser(engine.NewEDIReader(f, dialect))
+		default:
 			in = f
 		}
 	}
@@ -114,6 +138,11 @@ func runMap(cmd *cobra.Command, args []string) error {
 		} else {
 			sink = engine.JSONLWriter{W: os.Stdout}
 		}
+	}
+
+	if mapMask == "pii" {
+		sink = &engine.MaskingSink{Underlying: sink}
+		fmt.Fprintf(os.Stderr, "🛡️  Semantic Masking Enabled: PII will be anonymized in the output stream.\n")
 	}
 
 	start := time.Now()

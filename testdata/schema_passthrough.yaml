@@ -1,0 +1,8 @@
+# Passthrough-style schema: source path -> same target field name
+rules:
+  - source_path: id
+    target_field: id
+  - source_path: name
+    target_field: name
+  - source_path: role
+    target_field: role

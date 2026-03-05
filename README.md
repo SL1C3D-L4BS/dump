@@ -1,6 +1,6 @@
 # DUMP (Data Universal Mapping Platform)
 
-**AI-assisted schema inference and high-performance data mapping.** Map JSON, Parquet, SQL, CSV, and more using local Ollama for inference and a Rust core for zero-copy streaming and PQC integrity.
+**AI-assisted schema inference and high-performance data mapping.** Map JSON, Parquet, SQL, CSV, XML, EDI/HL7, and more using local Ollama for inference and a Rust core for zero-copy streaming and PQC integrity.
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/SL1C3D-L4BS/dump)](https://golang.org/)
 [![PQC-Secured](https://img.shields.io/badge/PQC-Secured-8A2BE2)](#)
@@ -13,9 +13,9 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 
 ---
 
-## What’s in the repo
+## What's in the repo
 
-* **CLI** (`cmd/`) — Infer schemas, map data, verify sealed Parquet (Go + optional Rust via cgo).
+* **CLI** (`cmd/`) — Infer, map, analyze, fan-out, proxy, verify (Go + optional Rust via cgo).
 * **Rust core** (`internal/core-rs/`) — Mapping engine, Vericore PQC (Dilithium2), Arrow IPC.
 * **API** (`api/`) — Fiber HTTP server: POST `/map`, verification, Ollama discovery.
 * **Desktop app** (`app/`) — Tauri v2 + React + Vite: mapping graph, verification dropzone, Ollama panel, live data preview.
@@ -51,9 +51,30 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 
 ## Workflow
 
-1. **Infer:** `dump infer source.json --target=parquet > schema.yaml`
-2. **Map:** `dump map source.json --schema=schema.yaml --format=parquet > output.parquet`
-3. **Verify:** Use the CLI or the desktop app to verify Parquet files sealed with the Vericore PQC MMR.
+1. **Infer:** `dump infer source.json --target=parquet > schema.yaml`  
+   Use `--from=xml` or `--from=edi` for non-JSON sources.
+2. **Map:** `dump map source.json --schema=schema.yaml --format=parquet --output=output.parquet`  
+   Use `--input-type xml` or `--input-type edi` (with `--dialect` for EDI). Add `--mask=pii` to anonymize PII in the stream.
+3. **Analyze (zero-knowledge):** `dump analyze mystery.txt --target=parquet`  
+   Detects format (jsonl, csv, xml, edi), samples the file, and infers a mapping via Ollama.
+4. **Fan-out:** `dump fanout --config fanout.yaml`  
+   Multiplexes one stream to local files, S3, Prometheus Pushgateway, and/or Elasticsearch. Supports `--mask=pii`.
+5. **Proxy (JIT sidecar):** `dump proxy --upstream http://legacy.example.com/api --schema=schema.yaml --port=8081`  
+   Translates upstream XML to JSONL on the fly.
+6. **Verify:** Use the CLI or the desktop app to verify Parquet files sealed with the Vericore PQC MMR.
+
+---
+
+## CLI commands
+
+| Command   | Description |
+|----------|-------------|
+| `dump infer [file]`   | Infer a YAML mapping from sample data (Ollama). `--target`, `--from=json\|xml\|edi`, `--model` |
+| `dump map [file]`     | Map input to JSONL or Parquet using a schema. `--schema`, `--input-type`, `--format`, `--mask=pii`, `--dialect` (EDI), `--xml-block` |
+| `dump analyze [file]` | Detect format and infer mapping from a mystery file. `--target`, `--model`, `--dialect` (optional for EDI) |
+| `dump fanout`        | Multi-target fan-out from a YAML config. `--config`, `--mask=pii` |
+| `dump proxy`         | HTTP sidecar: forward requests to upstream and stream mapped JSONL. `--upstream`, `--schema`, `--port`, `--xml-block` |
+| `dump verify [file]`  | Verify a file against its Vericore seal. `--seal`, `--seal-file` |
 
 ---
 
@@ -62,4 +83,6 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 * **CLI:** Go (Cobra), optional cgo link to Rust for mapping and verification.
 * **Rust core:** Schema application, row mapping, Arrow IPC, Dilithium2 signing/verification.
 * **Inference:** Ollama-only for schema and mapping suggestions.
+* **Formats:** JSONL, CSV, XML (streaming), EDI/HL7 (with dialect YAML), SQL (Postgres, SQLite).
+* **Sinks:** Local JSONL/Parquet, S3, Prometheus Pushgateway, Elasticsearch; PII masking via `--mask=pii`.
 * **Desktop:** Tauri v2, React, Tailwind; calls into Rust core for mapping and verification.

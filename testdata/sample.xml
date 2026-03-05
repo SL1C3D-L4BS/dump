@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Feed>
+  <Record>
+    <id>1</id>
+    <name>Alice</name>
+    <role>admin</role>
+  </Record>
+  <Record>
+    <id>2</id>
+    <name>Bob</name>
+    <role>user</role>
+  </Record>
+  <Record>
+    <id>3</id>
+    <name>Carol</name>
+    <role>user</role>
+  </Record>
+</Feed>

@@ -17,6 +17,7 @@ var (
 	inferTarget     string
 	inferSampleSize int
 	inferModel      string
+	inferFrom       string
 )
 
 const ollamaHealthURL = "http://localhost:11434"
@@ -24,7 +25,7 @@ const ollamaHealthURL = "http://localhost:11434"
 var inferCmd = &cobra.Command{
 	Use:   "infer [input file]",
 	Short: "Infer a YAML mapping schema from sample data using local AI (Ollama)",
-	Long:  `Reads the input file (or first N lines / a small chunk for JSON), sends it to Ollama, and streams the generated YAML mapping to stdout.`,
+	Long:  `Reads the input file (or first N lines / a small chunk for JSON), sends it to Ollama, and streams the generated YAML mapping to stdout. Use --from=xml or --from=edi for non-JSON sources.`,
 	Args:  cobra.ExactArgs(1),
 	RunE:  runInfer,
 }
@@ -33,6 +34,7 @@ func init() {
 	inferCmd.Flags().StringVar(&inferTarget, "target", "protobuf", "Target schema format (e.g. protobuf, parquet)")
 	inferCmd.Flags().IntVar(&inferSampleSize, "sample-size", 10, "Number of lines to sample, or approximate chunk size for JSON")
 	inferCmd.Flags().StringVar(&inferModel, "model", "llama3", "Ollama model name (e.g. llama3)")
+	inferCmd.Flags().StringVar(&inferFrom, "from", "json", "Source format for inference: json, xml, or edi")
 }
 
 func runInfer(cmd *cobra.Command, args []string) error {
@@ -59,7 +61,7 @@ func runInfer(cmd *cobra.Command, args []string) error {
 	}
 
 	inf := inference.NewSchemaInferencer("", nil)
-	yamlOut, err := inf.InferMapping(sample, inferTarget, inferModel)
+	yamlOut, err := inf.InferMapping(sample, inferTarget, inferModel, inferFrom)
 	if err != nil {
 		return err
 	}

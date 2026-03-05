@@ -20,7 +20,10 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(fanoutCmd)
 	rootCmd.AddCommand(inferCmd)
 	rootCmd.AddCommand(mapCmd)
+	rootCmd.AddCommand(proxyCmd)
 	rootCmd.AddCommand(verifyCmd)
 }

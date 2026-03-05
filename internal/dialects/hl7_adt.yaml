@@ -1,0 +1,96 @@
+# HL7 ADT (Admission/Discharge/Transfer) dialect for DUMP.
+# Maps segment IDs to human-readable field names; used by EDIReader to produce
+# structured maps for path-based mapping (e.g. MSH.SendingApplication, PID.PatientName).
+
+name: hl7_adt
+message_start_segment: MSH
+
+delimiters:
+  segment: "\n"
+  field: "|"
+  component: "^"
+
+segments:
+  MSH:
+    - SegmentType
+    - FieldSeparator
+    - EncodingCharacters
+    - SendingApplication
+    - SendingFacility
+    - ReceivingApplication
+    - ReceivingFacility
+    - DateTime
+    - Security
+    - MessageType
+    - MessageControlId
+    - ProcessingId
+    - VersionId
+  EVN:
+    - SegmentType
+    - EventType
+    - RecordedDateTime
+    - EventOccurred
+    - OperatorId
+  PID:
+    - SegmentType
+    - SetId
+    - PatientId
+    - PatientIdList
+    - AlternatePatientId
+    - PatientName
+    - MotherMaidenName
+    - DateTimeOfBirth
+    - Sex
+    - PatientAlias
+    - Race
+    - Address
+    - CountryCode
+    - PhoneNumber
+    - PrimaryLanguage
+    - MaritalStatus
+    - Religion
+    - AccountNumber
+    - SSN
+    - DriverLicenseNumber
+    - Citizenship
+    - VeteransMilitaryStatus
+  OBX:
+    - SegmentType
+    - SetId
+    - ValueType
+    - ObservationId
+    - ObservationSubId
+    - ObservationValue
+    - Units
+    - ReferencesRange
+    - AbnormalFlags
+    - Probability
+    - NatureOfAbnormalTest
+    - ObservationResultStatus
+    - EffectiveDate
+    - UserDefinedAccessChecks
+    - DateTimeOfObservation
+    - ProducerId
+    - ResponsibleObserver
+    - ObservationMethod
+  NK1:
+    - SegmentType
+    - SetId
+    - Name
+    - Relationship
+    - Address
+    - PhoneNumber
+    - BusinessPhoneNumber
+    - ContactRole
+    - StartDate
+    - EndDate
+    - JobTitle
+    - JobCode
+    - EmployerName
+    - EmployerAddress
+    - EmployerPhoneNumber
+    - ContactReason
+    - ContactPersonName
+    - ContactPersonPhoneNumber
+    - ContactPersonAddress
+    - NextOfKinAssociatedPartyIdentifiers

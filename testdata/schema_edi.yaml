@@ -1,0 +1,8 @@
+# EDI/HL7: segment-prefixed fields (PID.PatientName etc from dialect)
+rules:
+  - source_path: PID.PatientName
+    target_field: patient_name
+  - source_path: PID.DateTimeOfBirth
+    target_field: dob
+  - source_path: MSH.DateTime
+    target_field: message_time
