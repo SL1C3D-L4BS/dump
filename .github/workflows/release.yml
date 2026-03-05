@@ -1,5 +1,5 @@
 # Phase 6: Automated Distribution Pipeline
-# Cross-compiles DUMP CLI on tag push (v*) and publishes to GitHub Releases.
+# Builds DUMP CLI with Rust core (CGO) on tag push (v*); publishes to GitHub Releases.
 
 name: Release
 
@@ -13,43 +13,50 @@ permissions:
 
 jobs:
   build:
-    name: Build binaries
-    runs-on: ubuntu-latest
+    name: Build binaries (CGO + Rust)
     strategy:
       fail-fast: false
       matrix:
         include:
-          - goos: linux
+          - runs-on: ubuntu-latest
+            goos: linux
             goarch: amd64
             ext: ''
-          - goos: linux
+          - runs-on: macos-latest
+            goos: darwin
             goarch: arm64
             ext: ''
-          - goos: darwin
-            goarch: amd64
-            ext: ''
-          - goos: darwin
-            goarch: arm64
-            ext: ''
-          - goos: windows
+          - runs-on: windows-latest
+            goos: windows
             goarch: amd64
             ext: '.exe'
+
+    runs-on: ${{ matrix.runs-on }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust core
+        run: cargo build --release
+        working-directory: internal/core-rs
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Build
+      - name: Build Go binary (CGO)
         env:
+          CGO_ENABLED: '1'
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -ldflags="-s -w" -o "dump-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./main.go
+          go build -ldflags="-s -w" -o "dump-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" .
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
