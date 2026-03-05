@@ -57,9 +57,10 @@ jobs:
 
       - name: Set up MinGW (Windows)
         if: matrix.runs-on == 'windows-latest'
-        uses: egor-tensin/setup-mingw@v2
+        uses: msys2/setup-msys2@v2
         with:
-          platform: x64
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
 
       - name: Set up Go
         uses: actions/setup-go@v5
