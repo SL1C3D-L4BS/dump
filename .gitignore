@@ -3,12 +3,15 @@
 /dump-api
 /dump-cgo
 /dump-go
+/dump_go
 *.exe
 
 # Local test/output artifacts
 out.jsonl
 out.parquet
 *.db
+logs/
+vericore_ingest/
 
 # Dependencies / caches
 .pnpm-store/

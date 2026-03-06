@@ -21,6 +21,8 @@ DUMP uses **local Ollama** for schema inference and mapping suggestions. No clou
 * **Desktop app** (`app/`) — Tauri v2 + React + Vite: mapping graph, verification dropzone, Ollama panel, live data preview.
 * **Chrome extension** (`app/extension/`) — DevTools panel: decode Protobuf/gRPC-Web payloads via WASM (heuristic decoder).
 
+**Sample files** in the repo root for quick try-outs: `sample.jsonl`, `sample_schema.yaml`, and `stress_837.x12` (X12 837 sample). More test data in `testdata/` and `demo/`.
+
 ---
 
 ## Installation

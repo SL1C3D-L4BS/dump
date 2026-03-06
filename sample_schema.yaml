@@ -1,0 +1,7 @@
+rules:
+  - target_field: id
+    source_path: id
+    type: number
+  - target_field: name
+    source_path: name
+    type: string
